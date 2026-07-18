@@ -1,0 +1,69 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">GreenPulse AI 调度决策流程</title>
+  <desc id="desc">AI 协同调度大脑的决策流程，从能源与算力感知，到任务弹性分类、调度优化、集群执行和反馈学习。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="720" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F7FBFF"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#0B2D5B" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="720" rx="36" fill="url(#bg)"/>
+  <rect x="80" y="70" width="1120" height="580" rx="30" fill="#FFFFFF" stroke="#DCE8F6" filter="url(#shadow)"/>
+
+  <text x="118" y="122" fill="#0F2341" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700">AI 调度决策流程</text>
+  <text x="118" y="156" fill="#5E6F86" font-family="Inter, Arial, sans-serif" font-size="18">从能源时序与集群状态出发，生成满足 SLA 的低碳负荷计划</text>
+
+  <rect x="118" y="214" width="210" height="118" rx="22" fill="#F4FAFF" stroke="#D7E8FB"/>
+  <text x="146" y="253" fill="#0B63CE" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">01 · 感知</text>
+  <text x="146" y="286" fill="#0F2341" font-family="Inter, Arial, sans-serif" font-size="21" font-weight="700">能源窗口</text>
+  <text x="146" y="313" fill="#5E6F86" font-family="Inter, Arial, sans-serif" font-size="14">绿电 · 碳强度 · 电价</text>
+
+  <rect x="118" y="380" width="210" height="118" rx="22" fill="#F7FAFF" stroke="#D7E8FB"/>
+  <text x="146" y="419" fill="#0B63CE" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">02 · 建模</text>
+  <text x="146" y="452" fill="#0F2341" font-family="Inter, Arial, sans-serif" font-size="21" font-weight="700">任务队列</text>
+  <text x="146" y="479" fill="#5E6F86" font-family="Inter, Arial, sans-serif" font-size="14">时长 · 功率 · SLA</text>
+
+  <rect x="404" y="214" width="230" height="284" rx="28" fill="#0B63CE"/>
+  <text x="519" y="268" text-anchor="middle" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700">任务弹性识别</text>
+  <text x="519" y="296" text-anchor="middle" fill="#DDEEFF" font-family="Inter, Arial, sans-serif" font-size="15">判断负荷是否可时移</text>
+  <rect x="432" y="336" width="174" height="42" rx="21" fill="#FFFFFF" fill-opacity="0.16"/>
+  <text x="519" y="363" text-anchor="middle" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600">刚性 · 在线推理</text>
+  <rect x="432" y="394" width="174" height="42" rx="21" fill="#FFFFFF" fill-opacity="0.16"/>
+  <text x="519" y="421" text-anchor="middle" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600">弹性 · 微调训练</text>
+
+  <rect x="704" y="214" width="230" height="284" rx="28" fill="#F4FAFF" stroke="#D7E8FB"/>
+  <text x="819" y="268" text-anchor="middle" fill="#0F2341" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700">调度优化</text>
+  <text x="819" y="296" text-anchor="middle" fill="#5E6F86" font-family="Inter, Arial, sans-serif" font-size="15">滚动 24 小时计划</text>
+  <text x="744" y="348" fill="#5E6F86" font-family="Inter, Arial, sans-serif" font-size="15">降低用电成本</text>
+  <text x="744" y="386" fill="#5E6F86" font-family="Inter, Arial, sans-serif" font-size="15">降低碳排放</text>
+  <text x="744" y="424" fill="#5E6F86" font-family="Inter, Arial, sans-serif" font-size="15">保障业务 SLA</text>
+  <circle cx="724" cy="343" r="6" fill="#1B9B5D"/>
+  <circle cx="724" cy="381" r="6" fill="#1B9B5D"/>
+  <circle cx="724" cy="419" r="6" fill="#1B9B5D"/>
+
+  <rect x="1010" y="214" width="150" height="284" rx="28" fill="#F7FAFF" stroke="#D7E8FB"/>
+  <text x="1085" y="268" text-anchor="middle" fill="#0F2341" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">执行动作</text>
+  <text x="1085" y="322" text-anchor="middle" fill="#0B63CE" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">启动</text>
+  <text x="1085" y="362" text-anchor="middle" fill="#0B63CE" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">延迟</text>
+  <text x="1085" y="402" text-anchor="middle" fill="#0B63CE" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">扩缩容</text>
+  <text x="1085" y="442" text-anchor="middle" fill="#0B63CE" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">资源分配</text>
+
+  <path d="M328 273H404" stroke="#0B63CE" stroke-width="3" stroke-linecap="round"/>
+  <path d="M390 259L404 273L390 287" stroke="#0B63CE" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M328 439H404" stroke="#0B63CE" stroke-width="3" stroke-linecap="round"/>
+  <path d="M390 425L404 439L390 453" stroke="#0B63CE" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M634 356H704" stroke="#0B63CE" stroke-width="3" stroke-linecap="round"/>
+  <path d="M690 342L704 356L690 370" stroke="#0B63CE" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M934 356H1010" stroke="#0B63CE" stroke-width="3" stroke-linecap="round"/>
+  <path d="M996 342L1010 356L996 370" stroke="#0B63CE" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <rect x="222" y="566" width="836" height="48" rx="24" fill="#EDF8F1" stroke="#CDEDD9"/>
+  <text x="640" y="596" text-anchor="middle" fill="#167A45" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700">反馈闭环：实际功耗 · Token 产量 · SLA 结果 · 预测误差 · 碳核算</text>
+  <path d="M1085 498V590H1058" stroke="#1B9B5D" stroke-width="3" stroke-linecap="round"/>
+  <path d="M222 590H170V498" stroke="#1B9B5D" stroke-width="3" stroke-linecap="round"/>
+  <path d="M184 512L170 498L156 512" stroke="#1B9B5D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
