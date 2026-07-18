@@ -1,6 +1,6 @@
 <svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
   <title id="title">GreenPulse 数字孪生监控大屏</title>
-  <desc id="desc">数字孪生监控大屏原型，展示绿电比例、GPU 利用率、碳强度、绿色 Token 产量、24 小时能源与负荷时序、Pod 状态和当前调度决策。</desc>
+  <desc id="desc">数字孪生监控大屏原型，展示绿电比例、GPU 利用率、碳强度、绿色 Token 产量、多时间尺度能源与负荷时序、Pod 状态和当前调度决策。</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="720" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#F7FBFF"/>
@@ -18,7 +18,7 @@
   <rect width="1280" height="720" rx="36" fill="url(#bg)"/>
 
   <text x="72" y="76" fill="#0F2341" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700">数字孪生监控大屏</text>
-  <text x="72" y="110" fill="#5E6F86" font-family="Inter, Arial, sans-serif" font-size="18">面向绿色 Token 生产的 24 小时能源-算力协同视图</text>
+  <text x="72" y="110" fill="#5E6F86" font-family="Inter, Arial, sans-serif" font-size="18">面向绿色 Token 生产的多时间尺度能源-算力协同视图</text>
 
   <rect x="72" y="144" width="260" height="112" rx="24" fill="#FFFFFF" stroke="#DCE8F6" filter="url(#shadow)"/>
   <text x="100" y="184" fill="#5E6F86" font-family="Inter, Arial, sans-serif" font-size="15">绿电占比</text>

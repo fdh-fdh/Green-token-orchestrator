@@ -37,7 +37,7 @@
 
   <rect x="704" y="214" width="230" height="284" rx="28" fill="#F4FAFF" stroke="#D7E8FB"/>
   <text x="819" y="268" text-anchor="middle" fill="#0F2341" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700">调度优化</text>
-  <text x="819" y="296" text-anchor="middle" fill="#5E6F86" font-family="Inter, Arial, sans-serif" font-size="15">滚动 24 小时计划</text>
+  <text x="819" y="296" text-anchor="middle" fill="#5E6F86" font-family="Inter, Arial, sans-serif" font-size="15">多时间尺度滚动计划</text>
   <text x="744" y="348" fill="#5E6F86" font-family="Inter, Arial, sans-serif" font-size="15">降低用电成本</text>
   <text x="744" y="386" fill="#5E6F86" font-family="Inter, Arial, sans-serif" font-size="15">降低碳排放</text>
   <text x="744" y="424" fill="#5E6F86" font-family="Inter, Arial, sans-serif" font-size="15">保障业务 SLA</text>
