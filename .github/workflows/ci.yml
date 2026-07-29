@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Ruff(零告警门禁)
+        run: ruff check .
+      - name: Tests(strict xfail;新测试须附红证 — R0.2)
+        run: pytest
+      - name: Demo 冒烟(无外网、无密钥、全合成 — DFT)
+        run: make demo

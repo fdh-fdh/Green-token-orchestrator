@@ -1,0 +1,66 @@
+# GreenPulse 单一配置真源(ENGINEERING_RULES R1.1)。
+# 所有超参数、阈值、路径、时间尺度、目标函数权重、Pod 定义、信号源选择只能来自本文件。
+# 代码中不得出现这些值的字面量;本文件不得存在无人消费的键(配置消费测试守护)。
+
+run:
+  seed: 42                      # 全局随机种子;同 seed 双跑必须 bit 级一致
+  protocol_version: "draft-0"   # 评测协议版本;Gate S 冻结前一律 draft-*
+  results_dir: "results"        # 实验记录与决策记录落盘目录
+
+time:
+  resolution_minutes: 15        # 仿真步距(物理时间声明,步数由此推导 — R1.5)
+  horizon_hours: 48             # 单场景仿真时长
+  forecast_max_age_minutes: 60  # 预报最大时龄;超龄预报被拒绝(DFR DEP-1.2)
+
+signals:
+  carbon_provider: "synthetic"        # 注册表名;换 Provider = 改这一行(R1.2)
+  green_forecast_provider: "synthetic"
+  price_provider: "synthetic"
+  synthetic:
+    carbon_base_gco2_per_kwh: 550.0   # 合成碳强度基线(火电为主电网的量级)
+    carbon_swing_gco2_per_kwh: 250.0  # 日内摆动幅度
+    carbon_noise_gco2_per_kwh: 30.0   # 高斯噪声幅度
+    solar_peak_kw: 8000.0             # 合成光伏午间峰值
+    wind_mean_kw: 3000.0              # 合成风电均值
+    price_offpeak_per_kwh: 0.30       # 谷段电价(元/kWh)
+    price_peak_per_kwh: 1.10          # 峰段电价(元/kWh)
+    accounting: "average"             # 合成碳强度口径标签(average/marginal — R1.5)
+
+datacenter:
+  site_id: "vdc-01"
+  pue_base: 1.25                # 分时 PUE 曲线基线(S-X2)
+  pue_swing: 0.15               # 日内 PUE 摆动(午后散热压力高)
+  pods:
+    - name: "pod-a"
+      gpu_count: 128
+      power_budget_kw: 900.0
+    - name: "pod-b"
+      gpu_count: 128
+      power_budget_kw: 900.0
+    - name: "pod-c"
+      gpu_count: 64
+      power_budget_kw: 450.0
+
+workload:
+  synthetic:
+    online_inference_jobs: 24    # 刚性任务数(SLA 保护,不可时移)
+    finetune_jobs: 6             # 弹性任务数(可时移)
+    batch_inference_jobs: 10     # 半弹性任务数
+  gpu_power_draw_kw: 0.7         # 单 GPU 满载功率(含服务器分摊)
+  tokens_per_gpu_hour: 1200000.0  # 单 GPU 每小时 token 产量(合成画像)
+
+objective:
+  # 目标函数权重(README 五项;缺失或负值在加载器处拒绝 — DFR DEP-6.1)
+  alpha_cost: 1.0
+  beta_carbon: 1.0
+  gamma_sla: 100.0               # SLA 违约惩罚必须远大于节能项(SLA 保底铁律)
+  delta_peak: 0.5
+  epsilon_migration: 10.0        # MVP 以固定惩罚常量近似迁移/重启成本(O-X1 已声明)
+
+scheduler:
+  policy: "carbon_aware"         # 注册表名;基线对照时逐一替换
+  eco_mode_off: false            # 逃生开关:true 时行为与 carbon-agnostic 基线 bit 级一致
+  defer_quantile: 0.3            # price/carbon-only:当前值低于因果历史该分位才启动弹性任务
+  static_window_start_hour: 10   # best-static 基线固定运行窗起点(UTC 小时)
+  static_window_hours: 6         # best-static 基线固定运行窗长度
+  green_improvement_margin: 0.2  # carbon_aware:预报绿电超出当前 20% 以上才值得等待

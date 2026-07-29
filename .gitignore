@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# 运行产物:可再生产物不入库(ENGINEERING_RULES §6);实验记录 CSV 例外,显式 add
+results/
+!results/.gitkeep
+
+# 密钥与环境
+.env
+
+# 企业内部数据隔离(RISKS R10):任何非公开材料只进本目录,整目录不入库
+private/
+
+# OS
+.DS_Store
