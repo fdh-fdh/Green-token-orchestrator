@@ -24,16 +24,34 @@ A0 只使用完成一次设备与测量链路验证所需的资源。`eval-ttbh`
 ### A0 首次提交的输入和产物
 
 - 负载为固定输入的 TTNN 矩阵乘法。结果记录区分真实设备计时和合成输入。完整模型推理和 J/Token 属于后续标定。 [TTNN 矩阵乘法教程](https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/tutorials/tutorials/ttnn_basic_matrix_multiplication.html)
-- 在 GreenPulse 独立环境使用 JURECA Python 3.12 和 `ttnn==0.81.1`。首跑前在登录节点准备依赖，作业内加载模块和运行内核。 [TTNN 官方软件包](https://pypi.org/project/ttnn/0.81.1/)
+- 在登录节点把独立 Python 3.12.12、`ttnn==0.81.1` 和对应的 SFPI 7.89.0 编译器装到 GreenPulse 私有目录。批脚本清除继承的登录环境，恢复账户 `HOME`，并显式尝试加载 JSC `Stages/2026`、GCCcore、GMP、MPFR 和 MPC。计算节点无法访问 Lmod 时，使用 GreenPulse 私有的四个运行库，并用最小 C++ 编译验证 SFPI 能实际启动。单进程直接在 Slurm 分配内启动。脚本去掉 `SLURM_JOB_GPUS` 和站点 `TT_VISIBLE_DEVICES` 首尾的空格，确认两者指向同一个设备后才初始化 TTNN。 [TTNN 官方软件包](https://pypi.org/project/ttnn/0.81.1/) · [JURECA 批作业文档](https://apps.fz-juelich.de/jsc/hps/jureca/batchsystem.html#writing-a-batch-script) · [SFPI 7.89.0](https://github.com/tenstorrent/sfpi/releases/tag/7.89.0)
 - 收集 `profile.json`、Slurm 标准输出、`sacct` 作业及步骤记录、配置和代码校验值。TT 能耗需由可确认的分配设备遥测单独提供。
 
 在独立的 GreenPulse 目录准备环境。把 `account` 设为可用的 JURECA 配额，再提交单设备作业。
 
 ```bash
 cd "$HOME/GreenPulse"
-module load Stages/2025 GCCcore/.13.3.0 Python/3.12.3 PyTorch/2.5.1
-python3 -m venv .venv-tt-a0
-.venv-tt-a0/bin/python -m pip install 'ttnn==0.81.1' 'typing-extensions==4.16.0'
+runtime="$PWD/private/tt-a0-runtime"
+export UV_CACHE_DIR="$runtime/cache" UV_PYTHON_INSTALL_DIR="$runtime/python"
+export UV_PYTHON_BIN_DIR="$runtime/bin"
+python3.12 -m venv "$runtime/bootstrap"
+"$runtime/bootstrap/bin/python" -m pip install 'uv==0.10.0'
+uv="$runtime/bootstrap/bin/uv"
+"$uv" python install 3.12.12
+"$uv" venv --python "$("$uv" python find --managed-python 3.12.12)" "$runtime/venv"
+"$uv" pip install --python "$runtime/venv/bin/python" 'ttnn==0.81.1'
+for library in libatomic.so.1 libgmp.so.10 libmpfr.so.6 libmpc.so.3; do
+  source_path=$(ldconfig -p | awk -v name="$library" '$1 == name && /x86-64/ && !found {print $NF; found=1}')
+  install -D -m 0644 "$(readlink -f "$source_path")" "$runtime/lib/$library"
+done
+ttnn="$runtime/venv/lib/python3.12/site-packages/ttnn"
+sfpi_hash=83c05cda1668ec2d878c4b0a3920ac3b07d51c1fe9cde27792bbdf8d630a0d1d
+grep -qx "sfpi_x86_64_fedora_txz_hash='$sfpi_hash'" "$ttnn/tt_metal/sfpi-version"
+mkdir -p "$ttnn/runtime"
+curl -fL 'https://github.com/tenstorrent/sfpi/releases/download/7.89.0/sfpi_7.89.0_x86_64_fedora.txz?download=1' \
+  -o "$runtime/sfpi.txz"
+printf '%s  %s\n' "$sfpi_hash" "$runtime/sfpi.txz" | sha256sum --check
+tar -xJf "$runtime/sfpi.txz" -C "$ttnn/runtime"
 sbatch --parsable --account="$account" --partition=eval-ttbh deploy/slurm/tt-a0.sbatch
 ```
 

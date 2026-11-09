@@ -1,4 +1,4 @@
-"""Run a single Blackhole matrix-projection smoke test inside a Slurm step."""
+"""Run a single Blackhole matrix-projection smoke test inside a Slurm batch allocation."""
 
 import hashlib
 import json
@@ -26,14 +26,18 @@ def main() -> None:
     if size % 32:
         raise ValueError("Matrix size must be a multiple of the 32-element tile size")
 
-    chip = os.getenv("SLURM_STEP_GPUS", "")
+    chip = os.getenv("SLURM_JOB_GPUS", "").strip()
     if not re.fullmatch(r"[0-9]+", chip) or not Path(f"/dev/tenstorrent/{chip}").is_char_device():
         raise RuntimeError(
-            f"Expected exactly one allocated Tenstorrent device, got SLURM_STEP_GPUS={chip!r}"
+            f"Expected one allocated /dev/tenstorrent device, got SLURM_JOB_GPUS={chip!r}"
         )
+    site_visibility = os.getenv("TT_VISIBLE_DEVICES")
+    if site_visibility is None or site_visibility.strip() != chip:
+        raise RuntimeError(f"Expected site device assignment {chip}, got {site_visibility!r}")
     os.environ["TT_VISIBLE_DEVICES"] = chip
+    print(f"Allocated Tenstorrent PCIe device: {chip}", flush=True)
 
-    import torch
+    import numpy as np
     import ttnn
 
     device_ids = ttnn.get_device_ids()
@@ -55,9 +59,11 @@ def main() -> None:
             ttnn.synchronize_device(device)
             seconds.append(perf_counter() - started)
 
-        actual = ttnn.to_torch(result)
-        expected = torch.full((size, size), size, dtype=actual.dtype)
-        torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+        host = ttnn.to_layout(ttnn.from_device(result), ttnn.ROW_MAJOR_LAYOUT)
+        actual = np.asarray(host.to_list())
+        if actual.shape != (size, size):
+            raise RuntimeError(f"Expected {(size, size)} result, got {actual.shape}")
+        np.testing.assert_array_equal(actual, size)
 
     record = {
         "protocol_version": "tt-a0-matmul-1",
@@ -65,8 +71,9 @@ def main() -> None:
         "workload_provenance": "synthetic",
         "workload": "single_device_bfloat16_matmul",
         "slurm_job_id": os.environ["SLURM_JOB_ID"],
-        "slurm_step_id": os.environ["SLURM_STEP_ID"],
+        "slurm_step_id": "batch",
         "allocated_device": chip,
+        "python_version": sys.version.split()[0],
         "ttnn_version": version("ttnn"),
         "config_hash": hashlib.sha256(raw).hexdigest(),
         "script_hash": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
