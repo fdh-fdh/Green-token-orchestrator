@@ -1,0 +1,30 @@
+{
+  "protocol_version": "tt-a0-matmul-1",
+  "measurement_provenance": "real",
+  "workload_provenance": "synthetic",
+  "workload": "single_device_bfloat16_matmul",
+  "slurm_step_id": "batch",
+  "python_version": "3.12.12",
+  "ttnn_version": "0.81.1",
+  "config_hash": "2818fe57a249c03e94458207b1b83c6517937da3e6561f421a5324a0618a4f6b",
+  "script_hash": "e3dde21b0e26b27d1097a4b06419144d9546deef90eb07e0ad2bcff415d42c49",
+  "started_at_utc": "2026-11-09T17:28:51.707475+00:00",
+  "finished_at_utc": "2026-11-09T17:29:03.633666+00:00",
+  "matrix_size": 1024,
+  "warmup_iterations": 2,
+  "measured_iterations": 10,
+  "iteration_seconds": [
+    0.00013754699830315076,
+    0.0001066309996531345,
+    9.442200098419562e-05,
+    0.00010331600060453638,
+    9.77870004135184e-05,
+    0.00010087199916597456,
+    8.966500172391534e-05,
+    9.748600132297724e-05,
+    0.00010102099986397661,
+    0.00010007099990616553
+  ],
+  "median_iteration_seconds": 0.00010047149953607004,
+  "numerical_check": "exact_match"
+}
