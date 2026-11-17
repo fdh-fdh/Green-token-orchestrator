@@ -1,0 +1,107 @@
+# GreenPulse 在 JURECA 的实验计划
+
+实验草案 `jureca-mengxi-draft-2`。JURECA 提供实测计算环境，回放地点设为中国内蒙古乌兰察布所在的蒙西电网。本文中的场景和通过阈值都是实验设计值。
+
+## 1. 要验证的问题
+
+在任务量、模型、硬件和截止时间相同的条件下，把可延迟的批量推理移到低碳窗口，能否降低每个输出 Token 对应的估算电力碳排，同时保持按时完成率？在任务更密集、等待余量变小或预报有误时，收益是否还存在？
+
+- **价格假设**。在等工作量和服务质量门槛下，使用蒙西分时电价的 `price_only` 相对 `carbon_agnostic` 可降低模拟电度费用。取得可追溯的蒙西逐时碳强度与风光信号后，再检验 `carbon_aware` 相对 `carbon_agnostic` 的估算 gCO₂/输出 Token。
+- **策略对照**。分别比较 `best_static` 和 `carbon_only`，判断预报驱动时移在固定窗口和单信号规则之上能否带来收益。`price_only` 用于观察电价与碳排的权衡。记录现有 `carbon_aware` 实际使用的绿电预报规则，策略改动须换版本重跑。
+- **可证伪结果**。碳排变化落在不确定区间内、等工作量门槛失败、或在高负载下收益反转，都要在结果中保留。
+
+## 2. 实验矩阵与资源边界
+
+| 阶段 | 在哪里跑 | 跑什么 | 作业量与上限 | 通过条件 |
+|---|---|---|---|---|
+| A0 TT 冒烟 | JURECA `eval-ttbh` | 单个 Blackhole 芯片运行 BF16 `1024 × 1024` 矩阵乘法，预热 2 次、同步计时 10 次，回读结果校验 | 1 节点、1 个加速器、1 CPU task、4 GiB 内存、3 分钟时限 | Slurm 完成且退出码为 0，分配的设备能打开，输出与预期一致，10 个计时样本均为正 |
+| A1 标定 | 同一 Blackhole 型号 | TT 模型适配后，固定版本与解码参数，候选矩阵为批大小 `1 / 4 / 8` × 输出长度 `64 / 256` | 先测单个条件，再根据兼容性和实测耗时确定最小作业矩阵 | 记录实际输出 Token 和时长；只有能归因到分配设备的能耗测量才计算 J/Token |
+| B 配对回放 | 本地 CPU | 用标定画像生成固定任务清单，先跑蒙西分时电价对照，再接入经验证的碳强度和风光信号 | 无加速器作业 | 策略消费相同输入，能源时序通过因果性检查，完成量与截止时间指标可从日志重算 |
+| C 执行验证 | JURECA TT，另行确定配额与时段 | 两种策略处理等量批任务，记录计划启动、实际启动和实际能耗 | 可选阶段，先完成 B，再确定作业矩阵 | 能复核计划与实际启动偏差，实测能耗与外部电网估算分别报告 |
+
+A0 只使用完成一次设备与测量链路验证所需的资源。`eval-ttbh` 是受限访问的 Galaxy Blackhole 评估分区，每个节点有 32 个芯片。作业显式申请 1 个，并根据 Slurm 分配限制设备可见范围。该次排队记录只描述这一项作业。 [JURECA Blackhole 节点说明](https://apps.fz-juelich.de/jsc/hps/jureca/evaluation-platform-overview.html#tenstorrent-galaxy-blackhole-nodes)
+
+### A0 首次提交的输入和产物
+
+- 负载为固定输入的 TTNN 矩阵乘法。结果记录区分真实设备计时和合成输入。完整模型推理和 J/Token 属于后续标定。 [TTNN 矩阵乘法教程](https://docs.tenstorrent.com/tt-metal/latest/ttnn/ttnn/tutorials/tutorials/ttnn_basic_matrix_multiplication.html)
+- 在登录节点把独立 Python 3.12.12、`ttnn==0.81.1` 和对应的 SFPI 7.89.0 编译器装到 GreenPulse 私有目录。批脚本清除继承的登录环境，恢复账户 `HOME`，并显式尝试加载 JSC `Stages/2026`、GCCcore、GMP、MPFR 和 MPC。计算节点无法访问 Lmod 时，使用 GreenPulse 私有的四个运行库，并用最小 C++ 编译验证 SFPI 能实际启动。单进程直接在 Slurm 分配内启动。脚本去掉 `SLURM_JOB_GPUS` 和站点 `TT_VISIBLE_DEVICES` 首尾的空格，确认两者指向同一个设备后才初始化 TTNN。 [TTNN 官方软件包](https://pypi.org/project/ttnn/0.81.1/) · [JURECA 批作业文档](https://apps.fz-juelich.de/jsc/hps/jureca/batchsystem.html#writing-a-batch-script) · [SFPI 7.89.0](https://github.com/tenstorrent/sfpi/releases/tag/7.89.0)
+- 收集 `profile.json`、Slurm 标准输出、`sacct` 作业及步骤记录、配置和代码校验值。TT 能耗需由可确认的分配设备遥测单独提供。
+
+在独立的 GreenPulse 目录准备环境。把 `account` 设为可用的 JURECA 配额，再提交单设备作业。
+
+```bash
+cd "$HOME/GreenPulse"
+runtime="$PWD/private/tt-a0-runtime"
+export UV_CACHE_DIR="$runtime/cache" UV_PYTHON_INSTALL_DIR="$runtime/python"
+export UV_PYTHON_BIN_DIR="$runtime/bin"
+python3.12 -m venv "$runtime/bootstrap"
+"$runtime/bootstrap/bin/python" -m pip install 'uv==0.10.0'
+uv="$runtime/bootstrap/bin/uv"
+"$uv" python install 3.12.12
+"$uv" venv --python "$("$uv" python find --managed-python 3.12.12)" "$runtime/venv"
+"$uv" pip install --python "$runtime/venv/bin/python" 'ttnn==0.81.1'
+for library in libatomic.so.1 libgmp.so.10 libmpfr.so.6 libmpc.so.3; do
+  source_path=$(ldconfig -p | awk -v name="$library" '$1 == name && /x86-64/ && !found {print $NF; found=1}')
+  install -D -m 0644 "$(readlink -f "$source_path")" "$runtime/lib/$library"
+done
+ttnn="$runtime/venv/lib/python3.12/site-packages/ttnn"
+sfpi_hash=83c05cda1668ec2d878c4b0a3920ac3b07d51c1fe9cde27792bbdf8d630a0d1d
+grep -qx "sfpi_x86_64_fedora_txz_hash='$sfpi_hash'" "$ttnn/tt_metal/sfpi-version"
+mkdir -p "$ttnn/runtime"
+curl -fL 'https://github.com/tenstorrent/sfpi/releases/download/7.89.0/sfpi_7.89.0_x86_64_fedora.txz?download=1' \
+  -o "$runtime/sfpi.txz"
+printf '%s  %s\n' "$sfpi_hash" "$runtime/sfpi.txz" | sha256sum --check
+tar -xJf "$runtime/sfpi.txz" -C "$ttnn/runtime"
+sbatch --parsable --account="$account" --partition=eval-ttbh deploy/slurm/tt-a0.sbatch
+```
+
+### A1 如何做可重复的测量
+
+- 完成 TT 模型单条件验证后，再在一次分配内依次运行所需配置。每个条件重新预热，固定权重和 tokenizer。记录芯片型号、驱动、精度、版本与运行顺序。用首个模型条件的耗时估算后续测量窗口和时限。
+- 一次节点分配是一份独立重复，分配内各批用于估计时长分布。汇总每个条件的吞吐和 GPU J/Token，报告三次独立测量的中位数和范围。固定短输入的结论只适用于这类离线推理负载。长输入、在线 TTFT 和多 GPU 扩展留待单独实验。
+- 记录模型加载、分词、预热和生成耗时，分开纳入作业占用时间。`sacct` 的 `Start − Eligible` 用于观察 Slurm 排队，排队与模型开销各自留痕。 [Slurm 作业记账字段](https://slurm.schedmd.com/sacct.html)
+
+## 3. 回放的数据和对照组
+
+| 输入 | 主实验选型 | 数据与口径 |
+|---|---|---|
+| 任务 | 从 A1 的每种条件构建任务画像，聚合生成批次为约 5–15 分钟的单 GPU 作业。可延迟任务设 `deadline = arrival + service_time + slack`。加入少量须快速开始的任务模拟优先负载 | 执行参数由实测派生，到达、优先级与截止时间是预先固定的场景输入。实测标定的批任务与模拟优先负载分别标注 |
+| 价格 | 用内蒙古电力集团月度代理购电表和自治区发改委分时规则重建蒙西电度价曲线。样例固定为常规代理购电、工商业两部制、1–10（20）千伏 | 以人民币元/kWh 核算电度部分。现货市场在 2025 年 2 月正式运行；取得有明确分区、时标与来源的连续出清数据后，将现货作为单独实验。 [蒙西分时政策](https://fgw.xlgl.gov.cn/fgw/ywgz/zdxm/tzgg/2024010409440178739/index.html) · [自治区能源局现货市场说明](https://nyj.nmg.gov.cn/ywdt/gzdt1/202502/t20250224_2671669.html) |
+| 碳强度与风光 | 逐时数据待核实。生态环境部发布的内蒙古 2023 年省级平均电力因子为 0.6479 kgCO₂/kWh，可作总能耗的参考换算 | 年均因子没有日内变化，无法验证时移减碳。取得有时间戳的区域风光预报与碳信号后，再跑六策略与碳假设。 [生态环境部排放因子表](https://www.mee.gov.cn/xxgk2018/xxgk/xxgk01/202512/W020251231726284332528.pdf) |
+
+### 蒙西公开电价样例
+
+| 月份 | 尖峰 | 高峰 | 平段 | 低谷 | 深谷 |
+|---|---:|---:|---:|---:|---:|
+| [2026 年 7 月](https://energydc.cn/policy/mengxi-grid/2026-06/976c123b-733f-11f1-a341-7e046f2b807b) | 0.733784 | 0.636641 | 0.466325 | 0.289701 | 0.261946 |
+| [2026 年 11 月](https://energydc.cn/policy/mengxi-grid/2026-10/5bfe684c-d402-11f1-b182-96a01c2b4a18) | — | 0.627629 | 0.423425 | 0.267269 | — |
+
+金额为元/kWh，取转载公告的常规用户行。北京时间 11:00–16:00 为低谷，7 月 13:00–15:00 为深谷，11 月另有 00:00–04:00 低谷。该表描述月度公告的日内价差；包头市公开资料另报 2025 年 2 月蒙西现货按 1 小时计算的平均峰谷价差为 0.6635 元/kWh，可用于核对现货波动量级。 [蒙西分时政策](https://fgw.xlgl.gov.cn/fgw/ywgz/zdxm/tzgg/2024010409440178739/index.html) · [包头市新能源政策资料](https://www.baotou.gov.cn/ztzl/zsyz/zsyz_btsnyycyzcdl/zcdl_xnyzczsb/)
+
+**主场景。** 一个 4 加速器的虚拟资源池，按任务总加速器占用时间与池容量之比构造 70% 的到达负载，弹性任务有 4 小时余量。以 2026 年 4 月表校准固定窗口，用 7 月和 11 月表评估不同季节，冻结每窗 10 个任务种子。按北京时间应用政策时段，统一换算成 UTC 给仿真引擎。每次回放额外留足排空时间，并为排空阶段准备同口径电价。月内重复使用相同的日内政策曲线，结果按月份而非独立电网日分析。 [蒙西 2026 年 4 月代理购电表](https://energydc.cn/policy/mengxi-grid/2026-03/546dccf1-2c11-11f1-a341-7e046f2b807b)
+
+**压力场景。** 分别把到达负载调为 45% 和 90%，把弹性余量调为 1 小时和 12 小时。再用固定的 15 分钟与 60 分钟额外可用性延迟检验排队影响。每次只变一个因素，使用预先冻结的同一组任务种子。附加延迟标注为情景假设，三次标定作业的排队时间只作观测，不外推为全站分布。
+
+**六个策略。** `carbon_agnostic` 有资源即启动，`best_static` 的固定窗口只在校准集选择，`price_only` 和 `carbon_only` 按各自当时可见的信号决策，`carbon_aware` 按绿电预报决策。`oracle` 仅作完美信息参照；当前实现是启发式，若需要数学上界，另在小规模实例求解并校验。
+
+## 4. 指标、通过条件和解释边界
+
+| 指标 | 计算与用途 |
+|---|---|
+| 按时完成率 | 分母包含该窗到达的全部任务，截止时间内完成才计入分子。未启动、未完成与超时分别记录 |
+| 服务质量门槛 | 模拟优先任务在到达后 60 秒内启动的比例、全体任务按时完成率，两者暂定均至少 99%，且相对 `carbon_agnostic` 的降幅各至多 0.5 个百分点 |
+| 等工作量 | 主比较要求双方交付相同任务集合及输出 Token 量，使用相同模型、提示词与解码配置。门槛失败的场景计入失败率并单列 QoS 与排放变化 |
+| 时间与吞吐 | 报告生成时长和输出 Token/s，回放另报等待时间 p50/p95、按时完成率与任务量。未启动数单列，避免等待分位数只呈现成功样本而产生偏差 |
+| 加速器能耗与碳排 | A1 只有取得同一芯片和执行窗口的有效能耗时才报 J/输出 Token。回放按时段重叠切分执行能耗，计算 `Σ(加速器 kWh × 区域碳强度) / 已完成输出 Token 数`，把未完成任务消耗保留在分子 |
+| 设施与成本 | 设施级碳核算需要节点 IT 能耗及适用 PUE。第一阶段的模拟电度费用用 `Σ(加速器 kWh × 蒙西分时电度价)` 计算，并单列计量边界 |
+
+在同一窗口与种子内计算配对差，按时间块和季节展示结果，并报告不确定区间。重复使用同一能源曲线的任务种子共享电网样本。以 `carbon_agnostic` 为基线，等工作量、SLO 门槛和估算电度费用一起报告。碳实验启动后单列平均或边际口径下的碳排变化。若估计效应的区间含零，或结论只在单一季节成立，按实际范围表述。对外声明附数据版本、基线和服务质量代价。
+
+## 5. 回放开跑前的工程验收
+
+1. 实测画像进入现有任务模型。运行时长按秒记录，仿真用事件或最多 60 秒的调度步。逐任务计入服务时长和 GPU 能耗，并验证跨小时能耗积分、边界结束任务和未完成任务核算。
+2. 分离实际信号与预报。实现值按可用时间裁剪，预报保留 `issued_at` 与目标时段。故障测试在未来曲线植入尖峰，断言只有完美信息参照能看到它。检查数据缺口、UTC/夏令时转换和电价单位换算。
+3. 固定任务清单、随机种子、校准参数和评测版本。每个策略在同一输入快照运行，记录代码版本或源代码校验清单、配置与数据哈希、逐决策日志和作业结果。保留受限数据在私有目录。
+4. 若进入 C 阶段，用 `Submit`、`Eligible`、`Start`、`End` 对齐计划与实际执行。`--begin` 表示最早可运行时刻，排队仍可能错过计划窗口。若对照作业未在目标窗口启动，按真实启动时间核算并保留该次结果。 [Slurm sbatch](https://slurm.schedmd.com/sbatch.html#OPT_begin)
+
+**提交顺序。** 确认单设备分配可用后提交 A0，用数值结果、设备绑定和计时检查计算链路。模型标定使用独立的后续作业。全部 A0 文件和作业产物放在 JURECA 的 `$HOME/GreenPulse` 工作区内。
